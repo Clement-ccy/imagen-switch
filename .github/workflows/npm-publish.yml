@@ -47,22 +47,28 @@ jobs:
             echo "$NAME@$VERSION is not published yet; publishing."
           fi
 
+      - name: Validate npm automation token
+        if: steps.npm-version.outputs.published == 'false'
+        shell: bash
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::error::NPM_AUTOMATION_TOKEN is required for the first automated npm publish. Create an npm Automation token and save it in GitHub Actions secrets as NPM_AUTOMATION_TOKEN."
+            exit 1
+          fi
+
+          echo "Using NPM_AUTOMATION_TOKEN secret for npm publish."
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
+
       - name: Publish package
         if: steps.npm-version.outputs.published == 'false'
         shell: bash
         run: |
-          if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "Using NPM_AUTOMATION_TOKEN secret for npm publish."
-          else
-            unset NODE_AUTH_TOKEN
-            echo "No NPM_AUTOMATION_TOKEN secret found; npm will use Trusted Publishing via GitHub OIDC."
-          fi
-
           set +e
           npm publish --provenance --access public --ignore-scripts
           status=$?
           if [ "$status" -ne 0 ]; then
-            echo "::error::npm publish failed. If the npm log says EOTP, replace any classic/granular publish token with an npm Automation token saved as NPM_AUTOMATION_TOKEN, or configure npm Trusted Publishing and leave that secret unset."
+            echo "::error::npm publish failed. If the npm log says EOTP, replace the secret value with an npm Automation token. Classic/granular publish tokens can still require an OTP when publish 2FA is enabled."
           fi
           exit "$status"
         env:
