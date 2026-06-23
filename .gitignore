@@ -22,4 +22,5 @@ npm-debug.log*
 coverage/
 
 # Generated images (local output dir default)
+.imagen-real/
 .imagen/
