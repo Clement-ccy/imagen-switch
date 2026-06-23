@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { placeholder } from "../src/index";
+import { main } from "../src/index";
 
-describe("smoke", () => {
-  it("imports the entry module", () => {
-    expect(placeholder).toBe(true);
+describe("entry", () => {
+  it("exports a main function", () => {
+    expect(typeof main).toBe("function");
   });
 });
