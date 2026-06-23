@@ -14,11 +14,26 @@
   },
   "scripts": {
     "build": "tsup",
+    "ci": "npm test && npm run typecheck && npm run build",
+    "prepublishOnly": "npm run ci",
+    "publish:dry-run": "npm publish --dry-run",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "license": "MIT",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "image-generation",
+    "openai",
+    "gemini",
+    "imagen",
+    "agent"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
     "zod": "^3.25.0"
