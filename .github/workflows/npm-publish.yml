@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - master
   workflow_dispatch:
 
 permissions:
@@ -50,6 +49,21 @@ jobs:
 
       - name: Publish package
         if: steps.npm-version.outputs.published == 'false'
-        run: npm publish --provenance --access public --ignore-scripts
+        shell: bash
+        run: |
+          if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "Using NPM_AUTOMATION_TOKEN secret for npm publish."
+          else
+            unset NODE_AUTH_TOKEN
+            echo "No NPM_AUTOMATION_TOKEN secret found; npm will use Trusted Publishing via GitHub OIDC."
+          fi
+
+          set +e
+          npm publish --provenance --access public --ignore-scripts
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::npm publish failed. If the npm log says EOTP, replace any classic/granular publish token with an npm Automation token saved as NPM_AUTOMATION_TOKEN, or configure npm Trusted Publishing and leave that secret unset."
+          fi
+          exit "$status"
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
