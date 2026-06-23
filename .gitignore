@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Env / secrets
+.env
+.env.*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Test / coverage
+coverage/
+
+# Generated images (local output dir default)
+.imagen/
