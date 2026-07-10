@@ -1,4 +1,5 @@
-import { pathToFileURL } from "node:url";
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadRawConfig } from "./config";
 import { buildServer } from "./server";
@@ -23,7 +24,21 @@ export async function main(): Promise<void> {
   });
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+export function isDirectExecution(
+  moduleUrl: string,
+  argvPath: string | undefined,
+  resolvePath: (path: string) => string = realpathSync,
+): boolean {
+  if (!argvPath) return false;
+
+  try {
+    return resolvePath(fileURLToPath(moduleUrl)) === resolvePath(argvPath);
+  } catch {
+    return false;
+  }
+}
+
+if (isDirectExecution(import.meta.url, process.argv[1])) {
   main().catch((e) => {
     process.stderr.write(`[imagen-switch] fatal: ${e instanceof Error ? e.message : String(e)}\n`);
     process.exit(1);
