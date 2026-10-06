@@ -35,7 +35,36 @@ describe("resolveImage", () => {
         new Response(Buffer.from(PNG_B64, "base64"), { status: 200, headers: { "content-type": "image/png" } }),
       ),
     );
-    const img = await resolveImage("https://x/img.png", 1000);
+    const img = await resolveImage("https://x/img.png", 1000, async () => ["8.8.8.8"]);
     expect(img.mime).toBe("image/png");
+  });
+
+  it("rejects URLs that resolve to a private address", async () => {
+    await expect(resolveImage("https://internal.example/image.png", 1000, async () => ["127.0.0.1"])).rejects.toThrow(
+      /私有或本机地址/,
+    );
+  });
+
+  it("rejects redirects from a public URL to a private address", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(null, { status: 302, headers: { location: "http://127.0.0.1/image.png" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(resolveImage("https://public.example/image.png", 1000, async () => ["8.8.8.8"])).rejects.toThrow(
+      /私有或本机地址/,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects remote responses that are not images", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("not an image", { status: 200, headers: { "content-type": "text/plain" } })),
+    );
+
+    await expect(resolveImage("https://public.example/file", 1000, async () => ["8.8.8.8"])).rejects.toThrow(
+      /有效图像/,
+    );
   });
 });
