@@ -1,7 +1,14 @@
 import type { AuthConfig, HttpRequestSpec } from "./adapters/types";
 import { ProviderError, friendlyHttpError, redactKey } from "./errors";
 
-type RequestOptions = { timeoutMs: number; maxRetries: number };
+type RequestOptions = {
+  timeoutMs: number;
+  maxRetries: number;
+  maxBytes?: number;
+  validateUrl?: (url: string) => Promise<void>;
+};
+
+const DEFAULT_MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -95,12 +102,56 @@ export async function downloadToBytes(
   opts: RequestOptions,
 ): Promise<{ bytes: Uint8Array; mime: string }> {
   return retrying(opts.maxRetries, async () => {
-    const response = await withTimeoutFetch(url, { method: "GET" }, opts.timeoutMs);
-    if (!response.ok) {
-      throw new ProviderError(`图像下载失败 (HTTP ${response.status})：${await response.text()}`, response.status);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), opts.timeoutMs);
+    try {
+      let currentUrl = url;
+      let response: Response | undefined;
+      for (let redirects = 0; redirects <= 5; redirects += 1) {
+        await opts.validateUrl?.(currentUrl);
+        response = await fetch(currentUrl, { method: "GET", redirect: "manual", signal: controller.signal });
+        if (response.status < 300 || response.status >= 400) break;
+        const location = response.headers.get("location");
+        await response.body?.cancel();
+        if (!location || redirects === 5) throw new ProviderError("图像下载重定向次数过多或缺少目标地址");
+        currentUrl = new URL(location, currentUrl).toString();
+      }
+      if (!response) throw new ProviderError("图像下载未返回响应");
+      if (!response.ok) {
+        throw new ProviderError(`图像下载失败 (HTTP ${response.status})：${await response.text()}`, response.status);
+      }
+      const maxBytes = opts.maxBytes ?? DEFAULT_MAX_IMAGE_BYTES;
+      const contentLength = Number(response.headers.get("content-length"));
+      if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+        await response.body?.cancel();
+        throw new ProviderError(`图像下载超过大小限制（最大 ${maxBytes} 字节）`, 413);
+      }
+
+      const chunks: Uint8Array[] = [];
+      let total = 0;
+      const reader = response.body?.getReader();
+      if (!reader) throw new ProviderError("图像下载响应没有可读取的内容");
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > maxBytes) {
+          await reader.cancel();
+          throw new ProviderError(`图像下载超过大小限制（最大 ${maxBytes} 字节）`, 413);
+        }
+        chunks.push(value);
+      }
+
+      const bytes = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      const mime = response.headers.get("content-type")?.split(";")[0] || "application/octet-stream";
+      return { bytes, mime };
+    } finally {
+      clearTimeout(timer);
     }
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    const mime = response.headers.get("content-type")?.split(";")[0] || "application/octet-stream";
-    return { bytes, mime };
   });
 }

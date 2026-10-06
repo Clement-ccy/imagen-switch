@@ -97,4 +97,55 @@ describe("downloadToBytes", () => {
     expect([...out.bytes]).toEqual([4]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("rejects downloads larger than the configured byte limit", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: { "content-type": "image/png", "content-length": "3" },
+        }),
+      ),
+    );
+
+    await expect(
+      downloadToBytes("https://cdn/image.png", { timeoutMs: 1000, maxRetries: 0, maxBytes: 2 }),
+    ).rejects.toThrow(/大小限制/);
+  });
+
+  it("enforces the byte limit when content-length is absent", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "image/png" } })),
+    );
+
+    await expect(
+      downloadToBytes("https://cdn/image.png", { timeoutMs: 1000, maxRetries: 0, maxBytes: 2 }),
+    ).rejects.toThrow(/大小限制/);
+  });
+
+  it("keeps the timeout active while reading the response body", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn().mockImplementation(async (_url, init: RequestInit) => {
+        const body = new ReadableStream<Uint8Array>({
+          start(controller) {
+            init.signal!.addEventListener("abort", () => controller.error(init.signal!.reason), { once: true });
+          },
+        });
+        return new Response(body, { headers: { "content-type": "image/png" } });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const download = downloadToBytes("https://cdn/image.png", { timeoutMs: 10, maxRetries: 0 });
+      const outcome = download.catch((error: Error) => error);
+      await vi.advanceTimersByTimeAsync(11);
+
+      expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true);
+      expect(await outcome).toMatchObject({ name: "AbortError" });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
