@@ -11,6 +11,7 @@
 - 输入图：本地路径、data URL、裸 base64、HTTP(S) URL
 - 输出：默认保存到本地并返回绝对路径，可选内联返回 MCP image 内容块
 - HTTP：统一认证注入、超时、429/5xx/网络错误重试、友好错误信息与 API key 脱敏
+- 远程输入：仅允许公网 HTTP(S) 图像，单次下载最大 50 MiB
 - 分发：发布到 npm 后可通过 `npx -y imagen-switch-mcp` 直接启动
 
 ## 快速开始
@@ -102,6 +103,12 @@ edit_image(prompt, images[], mask?, model?, size?, n?, output_path?, ...provider
 - `data:image/png;base64,...`
 - 裸 base64
 - `https://...`
+
+Provider 限制：
+
+- OpenAI 支持多图与 `mask`，可通过 `input_fidelity` 控制输入保真度。
+- Gemini 支持多图但仅支持 `n=1`，不支持 `mask`；像素尺寸会自动转换为宽高比。
+- `custom` 的 `{{image}}` 模板仅支持单图，不支持 `mask`；传入不支持的参数会返回明确错误。
 
 ## 环境变量
 
