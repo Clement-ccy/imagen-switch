@@ -2,6 +2,10 @@
   "name": "imagen-switch-mcp",
   "version": "0.1.2",
   "description": "MCP server for multi-provider image generation via env config",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Clement-ccy/imagen-switch.git"
+  },
   "type": "module",
   "bin": {
     "imagen-switch-mcp": "dist/index.js"
