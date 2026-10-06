@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { isDirectExecution, main } from "../src/index";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 describe("entry", () => {
   it("exports a main function", () => {
@@ -7,16 +9,12 @@ describe("entry", () => {
   });
 
   it("recognizes npm bin symlinks as direct execution", () => {
-    const realEntry = "D:\\npm-cache\\package\\dist\\index.js";
-    const resolvePath = (path: string) =>
-      path.includes(".bin") ? realEntry : path.replaceAll("/", "\\");
+    const realEntry = resolve("npm-cache", "package", "dist", "index.js");
+    const binPath = resolve("npm-cache", "package", "node_modules", ".bin", "imagen-switch-mcp");
+    const resolvePath = (path: string) => path === binPath ? realEntry : path;
 
     expect(
-      isDirectExecution(
-        "file:///D:/npm-cache/package/dist/index.js",
-        "D:\\npm-cache\\package\\node_modules\\.bin\\imagen-switch-mcp",
-        resolvePath,
-      ),
+      isDirectExecution(pathToFileURL(realEntry).href, binPath, resolvePath),
     ).toBe(true);
   });
 });
