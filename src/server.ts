@@ -91,6 +91,7 @@ export function buildServer(raw: RawConfig): McpServer {
           images: z.array(z.string()).describe("输入图：本地路径 / data URL / 裸 base64 / http(s) URL"),
           mask: z.string().optional().describe("inpaint 蒙版（支持的 Provider 才用）"),
           ...adapter.extraParams,
+          ...adapter.editExtraParams,
         },
       },
       async (args) => {

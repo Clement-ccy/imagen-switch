@@ -24,6 +24,10 @@ describe("buildServer", () => {
     const names = tools.map((tool) => tool.name);
     expect(names).toContain("generate_image");
     expect(names).toContain("edit_image");
+    const generate = tools.find((tool) => tool.name === "generate_image")!;
+    const edit = tools.find((tool) => tool.name === "edit_image")!;
+    expect(generate.inputSchema.properties).not.toHaveProperty("input_fidelity");
+    expect(edit.inputSchema.properties).toHaveProperty("input_fidelity");
   });
 
   it("generate_image saves a file and returns its path", async () => {
@@ -67,6 +71,37 @@ describe("buildServer", () => {
     const res: any = await client.callTool({ name: "generate_image", arguments: { prompt: "a cat", output_format: "webp" } });
     const text = res.content.find((content: any) => content.type === "text").text as string;
     expect(text).toMatch(/\.webp/);
+  });
+
+  it("edit_image sends the input image and saves the edited output", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "imagen-srv-edit-"));
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString("base64");
+    const fetchMock = vi.fn().mockImplementation(async (_url, init: RequestInit) => {
+      const body = init.body as FormData;
+      expect(body.get("image")).toBeInstanceOf(Blob);
+      expect(body.get("prompt")).toBe("make it blue");
+      expect(body.get("input_fidelity")).toBe("high");
+      return new Response(JSON.stringify({ data: [{ b64_json: png }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const client = await connect(
+      loadRawConfig({ IMAGEN_FORMAT: "openai", IMAGEN_API_KEY: "k", IMAGEN_MODEL: "gpt-image-2", IMAGEN_OUTPUT_DIR: dir }),
+    );
+
+    const res: any = await client.callTool({
+      name: "edit_image",
+      arguments: { prompt: "make it blue", images: [`data:image/png;base64,${png}`], input_fidelity: "high" },
+    });
+
+    expect(res.isError).toBeFalsy();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const text = res.content.find((content: any) => content.type === "text").text as string;
+    const match = text.match(/- (.+\.png)/);
+    expect(match).toBeTruthy();
+    expect((await readFile(match![1])).length).toBeGreaterThan(0);
   });
 
   it("returns isError on provider failure", async () => {
