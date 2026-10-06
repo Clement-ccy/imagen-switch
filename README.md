@@ -315,11 +315,11 @@ npm publish --provenance --access public
 
 自动发布使用 `.github/workflows/npm-publish.yml`，只监听 `main` 分支。
 
-当前 workflow 使用 npm automation token，适合包的首次发布，也能避开 publish 2FA 在 CI 中要求一次性验证码的问题：
+当前 workflow 优先读取 `NPM_AUTOMATION_TOKEN`，并兼容已有的 `NPM_TOKEN`：
 
-1. 在 npm 创建 `Automation` 类型的 access token。
-2. 在 GitHub 仓库设置 `Settings -> Secrets and variables -> Actions` 中新增 secret：`NPM_AUTOMATION_TOKEN`。
-3. 不要使用普通 classic/granular publish token；如果账号开启了 publish 2FA，这类 token 会在 CI 中触发 `EOTP`，因为 Action 无法输入一次性验证码。
+1. 在 npm 创建具有此包发布权限的 access token；开启发布 2FA 时，token 需要允许 CI 无交互发布。
+2. 在 GitHub 仓库设置 `Settings -> Secrets and variables -> Actions` 中新增 secret：`NPM_AUTOMATION_TOKEN` 或 `NPM_TOKEN`。
+3. 如果发布出现 `EOTP`，请检查 token 和账号的 2FA 配置；Action 无法交互输入一次性验证码。
 
 发布成功后，如果想改成 npm Trusted Publishing，可以在 npm package 的发布设置里添加 GitHub Actions trusted publisher，并相应调整 workflow 移除 token 校验。
 
