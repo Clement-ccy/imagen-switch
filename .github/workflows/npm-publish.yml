@@ -21,7 +21,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           registry-url: https://registry.npmjs.org
           cache: npm
 
@@ -47,22 +47,6 @@ jobs:
             echo "$NAME@$VERSION is not published yet; publishing."
           fi
 
-      - name: Validate npm publish token
-        if: steps.npm-version.outputs.published == 'false'
-        shell: bash
-        run: |
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "::error::NPM_AUTOMATION_TOKEN or NPM_TOKEN is required. Configure an npm publish token in GitHub Actions secrets."
-            exit 1
-          fi
-
-          publish_user="$(npm whoami)"
-          echo "Authenticated npm account: $publish_user"
-          npm access list packages "$publish_user" --json |
-            node -e 'const fs = require("node:fs"); const name = process.argv[1]; const packages = JSON.parse(fs.readFileSync(0, "utf8")); console.log(`${name}: ${packages[name] ?? "not listed"}`);' '${{ steps.npm-version.outputs.name }}'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN || secrets.NPM_TOKEN }}
-
       - name: Publish package
         if: steps.npm-version.outputs.published == 'false'
         shell: bash
@@ -71,8 +55,6 @@ jobs:
           npm publish --provenance --access public --ignore-scripts
           status=$?
           if [ "$status" -ne 0 ]; then
-            echo "::error::npm publish failed. Check token publish permissions and, for EOTP, its 2FA settings."
+            echo "::error::npm publish failed. Check that the npm Trusted Publisher matches Clement-ccy/imagen-switch and npm-publish.yml, and allows npm publish."
           fi
           exit "$status"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN || secrets.NPM_TOKEN }}
