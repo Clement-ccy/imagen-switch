@@ -40,3 +40,20 @@ describe("createCustomAdapter.parseResponse", () => {
     ]);
   });
 });
+
+describe("createCustomAdapter.buildEdit", () => {
+  const editAdapter = createCustomAdapter("https://api.x", {
+    ...custom,
+    editPath: "/edit",
+    bodyTemplate: "{\"model\":\"{{model}}\",\"prompt\":\"{{prompt}}\",\"image\":\"{{image}}\"}",
+  });
+  const image = { bytes: new Uint8Array([1]), mime: "image/png" };
+
+  it("rejects multiple images instead of silently dropping them", () => {
+    expect(() => editAdapter.buildEdit(req, [image, image])).toThrow(/一张输入图/);
+  });
+
+  it("rejects masks because the custom template cannot represent them", () => {
+    expect(() => editAdapter.buildEdit(req, [image], image)).toThrow(/mask/);
+  });
+});

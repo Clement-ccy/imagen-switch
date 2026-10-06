@@ -61,10 +61,12 @@ export function createCustomAdapter(baseUrl: string, custom: RawConfig["custom"]
       const body = encodeBody(custom.encoding, render(custom.bodyTemplate, req), req.params);
       return { method: "POST", url: `${baseUrl}${custom.generatePath}`, headers: {}, body };
     },
-    buildEdit(req: NormReq, images: ResolvedImage[], _mask?: ResolvedImage) {
+    buildEdit(req: NormReq, images: ResolvedImage[], mask?: ResolvedImage) {
       if (!custom.editPath) throw new ConfigError("custom 格式未配置 IMAGEN_CUSTOM_EDIT_PATH，不支持 edit");
       if (!custom.bodyTemplate) throw new ConfigError("custom 格式缺少 IMAGEN_CUSTOM_BODY_TEMPLATE");
-      const b64 = Buffer.from(images[0]?.bytes ?? new Uint8Array()).toString("base64");
+      if (images.length !== 1) throw new ConfigError("custom 图像编辑模板仅支持一张输入图");
+      if (mask) throw new ConfigError("custom 图像编辑模板不支持 mask 参数");
+      const b64 = Buffer.from(images[0].bytes).toString("base64");
       const template = custom.bodyTemplate.replace(/\{\{image\}\}/g, escapeTemplateString(b64));
       const body = encodeBody(custom.encoding, render(template, req), req.params);
       return { method: "POST", url: `${baseUrl}${custom.editPath}`, headers: {}, body };
