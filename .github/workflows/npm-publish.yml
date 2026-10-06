@@ -56,7 +56,10 @@ jobs:
             exit 1
           fi
 
-          echo "Using the configured npm publish token."
+          publish_user="$(npm whoami)"
+          echo "Authenticated npm account: $publish_user"
+          npm access list packages "$publish_user" --json |
+            node -e 'const fs = require("node:fs"); const name = process.argv[1]; const packages = JSON.parse(fs.readFileSync(0, "utf8")); console.log(`${name}: ${packages[name] ?? "not listed"}`);' '${{ steps.npm-version.outputs.name }}'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN || secrets.NPM_TOKEN }}
 
