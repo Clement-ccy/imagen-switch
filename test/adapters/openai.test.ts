@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createOpenAiAdapter } from "../../src/adapters/openai";
+import { createOpenAiAdapter, OPENAI_META } from "../../src/adapters/openai";
 import type { NormReq } from "../../src/adapters/types";
 
 const openaiAdapter = createOpenAiAdapter("https://api.openai.com/v1");
@@ -57,5 +57,14 @@ describe("openaiAdapter.parseResponse", () => {
     expect(openaiAdapter.parseResponse({ data: [{ url: "https://img/x" }] })).toEqual([
       { kind: "url", data: "https://img/x" },
     ]);
+  });
+});
+
+describe("OPENAI_META.extraParams", () => {
+  it("matches the current OpenAI edit controls", () => {
+    expect(OPENAI_META.editExtraParams).toHaveProperty("input_fidelity");
+    expect(OPENAI_META.extraParams).not.toHaveProperty("input_fidelity");
+    expect(OPENAI_META.extraParams).not.toHaveProperty("thinking");
+    expect(OPENAI_META.extraParams).not.toHaveProperty("seed");
   });
 });

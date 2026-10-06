@@ -27,6 +27,7 @@ export type NormImage = { kind: "b64" | "url"; data: string; mime?: string };
 export interface ImageAdapter {
   format: string;
   extraParams: ZodRawShape;
+  editExtraParams?: ZodRawShape;
   supportsEdit: boolean;
   defaultBaseUrl?: string;
   defaultAuth: AuthDefaults;

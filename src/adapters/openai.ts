@@ -10,14 +10,15 @@ export const OPENAI_META = {
     quality: z
       .string()
       .optional()
-      .describe("standard/high (gpt-image-2); low/medium/high/auto (gpt-image-1); standard/hd (dall-e-3)"),
+      .describe("low | medium | high | auto；部分模型还支持 xhigh | max"),
     background: z.string().optional().describe("auto | transparent | opaque"),
-    thinking: z.string().optional().describe("off | low | medium | high"),
-    seed: z.number().int().optional().describe("int32"),
     output_format: z.string().optional().describe("png | jpeg | webp"),
     output_compression: z.number().int().optional().describe("0-100"),
     moderation: z.string().optional().describe("auto | low"),
     user: z.string().optional().describe("abuse detection identifier"),
+  },
+  editExtraParams: {
+    input_fidelity: z.string().optional().describe("high | low；控制对输入图的保真度"),
   },
 };
 
