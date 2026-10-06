@@ -1,4 +1,5 @@
 import type { AuthDefaults, ImageAdapter, NormImage, NormReq, ResolvedImage } from "./types";
+import { ConfigError } from "../errors";
 
 export const GEMINI_META = {
   format: "gemini",
@@ -12,7 +13,24 @@ function bytesToB64(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString("base64");
 }
 
+function gcd(a: number, b: number): number {
+  while (b !== 0) {
+    [a, b] = [b, a % b];
+  }
+  return a;
+}
+
+function toAspectRatio(size: string): string {
+  const match = /^(\d+)x(\d+)$/.exec(size);
+  if (!match) return size;
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  const divisor = gcd(width, height);
+  return `${width / divisor}:${height / divisor}`;
+}
+
 function baseGenerationConfig(req: NormReq): Record<string, unknown> {
+  if (req.n !== 1) throw new ConfigError("Gemini 图像接口仅支持 n=1");
   const existing = (req.params.generationConfig ?? {}) as Record<string, unknown>;
   const generationConfig: Record<string, unknown> = {
     responseModalities: ["TEXT", "IMAGE"],
@@ -21,7 +39,7 @@ function baseGenerationConfig(req: NormReq): Record<string, unknown> {
   if (req.size) {
     generationConfig.imageConfig = {
       ...((generationConfig.imageConfig ?? {}) as Record<string, unknown>),
-      aspectRatio: req.size,
+      aspectRatio: toAspectRatio(req.size),
     };
   }
   return generationConfig;
@@ -55,7 +73,8 @@ export function createGeminiAdapter(baseUrl: string): ImageAdapter {
       };
       return { method: "POST", url: `${baseUrl}/models/${req.model}:generateContent`, headers: {}, body };
     },
-    buildEdit(req: NormReq, images: ResolvedImage[], _mask?: ResolvedImage) {
+    buildEdit(req: NormReq, images: ResolvedImage[], mask?: ResolvedImage) {
+      if (mask) throw new ConfigError("Gemini 图像编辑不支持 mask 参数");
       const { generationConfig: _generationConfig, ...params } = req.params;
       const parts: unknown[] = [{ text: req.prompt }];
       for (const img of images) {

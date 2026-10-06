@@ -34,4 +34,18 @@ describe("geminiAdapter.buildEdit", () => {
     const parts = body.contents[0].parts;
     expect(parts.some((p: any) => p.inline_data)).toBe(true);
   });
+
+  it("maps pixel dimensions to a Gemini aspect ratio", () => {
+    const spec = adapter.buildEdit(
+      { ...req, size: "1536x1024" },
+      [{ bytes: new Uint8Array([1, 2]), mime: "image/png" }],
+    );
+    expect((spec.body as any).generationConfig.imageConfig.aspectRatio).toBe("3:2");
+  });
+
+  it("rejects unsupported mask and multiple output requests", () => {
+    const image = { bytes: new Uint8Array([1, 2]), mime: "image/png" };
+    expect(() => adapter.buildEdit(req, [image], image)).toThrow(/mask/);
+    expect(() => adapter.buildEdit({ ...req, n: 2 }, [image])).toThrow(/n=1/);
+  });
 });
