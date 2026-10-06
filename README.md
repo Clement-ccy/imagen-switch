@@ -313,15 +313,15 @@ npm run publish:dry-run
 npm publish --provenance --access public
 ```
 
-自动发布使用 `.github/workflows/npm-publish.yml`，只监听 `main` 分支。
+自动发布使用 `.github/workflows/npm-publish.yml`，监听 `main` 分支，也支持手动触发。workflow 使用 Node.js 24 和 npm Trusted Publishing，通过 GitHub Actions 的 OIDC 身份发布，无需配置 npm 发布 Token。
 
-当前 workflow 优先读取 `NPM_AUTOMATION_TOKEN`，并兼容已有的 `NPM_TOKEN`：
+在 npm package 设置的 Trusted Publisher 中配置：
 
-1. 在 npm 创建具有此包发布权限的 access token；开启发布 2FA 时，token 需要允许 CI 无交互发布。
-2. 在 GitHub 仓库设置 `Settings -> Secrets and variables -> Actions` 中新增 secret：`NPM_AUTOMATION_TOKEN` 或 `NPM_TOKEN`。
-3. 如果发布出现 `EOTP`，请检查 token 和账号的 2FA 配置；Action 无法交互输入一次性验证码。
+1. 选择 GitHub Actions；Organization or user 填 `Clement-ccy`，Repository 填 `imagen-switch`。
+2. Workflow filename 填 `npm-publish.yml`，Environment name 留空。
+3. 勾选允许 `npm publish`。仅允许 `npm stage publish` 时只能暂存包，需要维护者批准后才会公开发布。
 
-发布成功后，如果想改成 npm Trusted Publishing，可以在 npm package 的发布设置里添加 GitHub Actions trusted publisher，并相应调整 workflow 移除 token 校验。
+Trusted Publishing 要求 npm CLI 11.5.1 或更高、Node.js 22.14.0 或更高，并使用 GitHub 托管 runner 和 `id-token: write` 权限；当前 workflow 已满足这些条件。`npm whoami` 不验证 OIDC 发布权限，实际 `npm publish` 的结果才是发布验证依据。
 
 合并到 `main` 后，Action 会运行 `npm run ci`。如果 `package.json` 中的版本还没有发布过，Action 会执行 `npm publish --provenance --access public`；如果版本已存在于 npm，Action 会跳过发布，避免主分支文档更新导致失败。
 
